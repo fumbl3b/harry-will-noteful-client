@@ -1,73 +1,99 @@
-import React from 'react';
-import {Route,Link} from 'react-router-dom';
+import React, { Component } from "react";
 import ApiContext from '../ApiContext';
+import ValidationError from '../ValidationError'
+import './AddFolder.css';
+import PropTypes from 'prop-types'
 
 
-export default class AddFolder extends React.Component {
-    state = {
-        folderName: { value: '' },
+class AddFolder extends Component {
+   static contextType = ApiContext;
+
+   constructor(props) {
+    super(props);
+    this.state = {
+      name: {
+        value: '',
         touched: false
-    };
+      }
+    }
+  }
+
+
+
+  handleSubmit(event) {
+    event.preventDefault();
+    console.log(event.target);
+    const newName = event.target.FolderName.value;
     
-    static defaultProps = {
-        folders: [],
-        notes: [],
-        history: {
-            goBack: () => {}
-        },
-        match: {
-            params: {}
-          }
-    };
-
-    static contextType = ApiContext;
-
-    setNewFolderName = name => {
-        this.setState({folderName: {value: name}, touched: true});
+    const newFolder = {
+        name: newName
     }
-
-    validateFolderName () {
-        let folderName = this.state.folderName.value;
-        if (this.context.folders.filter(folder => folder.name === folderName).length > 0)
-            return 'Must be a unique Folder name';
-    }
-
-    handleCreateFolder = e => {
-        e.preventDefault();
-        const newFolder = this.state.folderName.value
-        const newFolderJson = JSON.stringify({ name: newFolder });
-
-        fetch(`http://localhost:9090/folders`, {
-            method: 'POST',
-            headers: {
-                'content-type': 'application/json'
-            },
-            body: newFolderJson
-        }).then(res => {
-            if (!res.ok)
-                return res.json().then(e => Promise.reject(e))
-            return res.json()
-        }).then((resJson) => {
-            console.log(resJson);
-            this.context.addFolder(newFolder);
-            this.props.history.push('/');
-        }).catch(error => {
-            console.error({ error });
+    
+    fetch(`http://localhost:9090/folders`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(newFolder)})
+    .then(response => response.json())
+    .then(data => {
+            console.log('Success:', data);
+            this.context.addFolder(data);
+            this.goBack();
         })
-    }
+        .catch((error) => {
+            console.error('Error:', error);
+        });
 
-    render() {
-        return (
-            <div>
-                <label htmlFor="new-folder">
-                    New Folder Name:       
-                </label>
-                <input id="new-folder" type="text" value={this.state.folderName.value}
-                    onChange={e => this.setNewFolderName(e.target.value)} />
-                    <p className="error">{this.validateFolderName()}</p>
-                <button disabled={this.validateFolderName()} onClick={this.handleCreateFolder}>Create Folder</button>
-                {/* <button onClick={this.props.history.push('/')}>Cancel</button> */}
+  }
+
+
+  goBack(){
+        console.log('goBack')
+        this.props.history.push('/')
+  }
+  
+  updateName(name) {
+    this.setState({ name: { value: name, touched: true } });
+  }
+
+  validateName() {
+    const name = this.state.name.value.trim();
+    if (name.length === 0) {
+      return "Name is required";
+    } 
+  }
+
+
+  render() {
+    const nameError = this.validateName();
+    console.log(this.context);
+    return (
+        <form className="addBookmarkForm" onSubmit={e => this.handleSubmit(e)}>
+            <fieldset name="formField">
+          
+            <div className="form-group">       
+              <label htmlFor="FolderName" className="folderLabel">Name: </label>
+              <input id="FolderName" type="text"  placeholder="Name" name="FolderName"
+                      onChange={e => this.updateName(e.target.value)}/>
+              {this.state.name.touched && <ValidationError message={nameError} />}
             </div>
-        );
-    }
-} 
+          <br />
+            
+          <div className="submitFolder">
+            <button className="AddSubmit" id="submit" type="submit"
+                    disabled={this.validateName()}>Submit</button>
+          </div>   
+          <div className="error-container">
+          <div id="thisModal" aria-modal="true" className="modal">
+            <div className="modal-content">
+            <span className="close">&times;</span>
+            <p></p>
+            </div>   
+        </div> 
+        </div>  
+        </fieldset>
+      </form>
+    );
+  }
+}
+export default AddFolder;
+
+AddFolder.propTypes = {
+   history: PropTypes.object.isRequired
+}
